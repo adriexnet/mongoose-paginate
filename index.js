@@ -9,7 +9,7 @@
  * @param {Array|Object|String} [options.populate]
  * @param {Boolean} [options.lean=false]
  * @param {Boolean} [options.leanWithId=true]
- * @param {Number} [options.offset=0] - Use offset or page to set skip position
+ * @param {Number} [options.offset] - Use offset or page to set skip position
  * @param {Number} [options.page=1]
  * @param {Number} [options.limit=10]
  * @param {Function} [callback]
