@@ -43,7 +43,7 @@ function paginate(query, options, callback) {
     if(privateFields.length && select) {
         privateFields.forEach(function(field) {
             if(select && select.indexOf(field) !== -1) {
-                select = select.replace(field, '');
+                select = select.replace(field, '|' + field + '|');
             }
         });
     }
