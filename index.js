@@ -6,7 +6,9 @@ var Promise = require('bluebird');
  * @param {Object|String}         [options.select]
  * @param {Object|String}         [options.sort]
  * @param {Array|Object|String}   [options.populate]
- * @param {Boolean}               [options.lean=true]
+ * @param {Boolean}               [options.lean=false]
+ * @param {Boolean}               [options.normalizeId=false]
+ * @param {Boolean}               [options.privateFields=[]]
  * @param {Number}                [options.page=1]
  * @param {Number}                [options.size=10]
  * @param {Number}                [options.maxSize=100]
@@ -18,23 +20,49 @@ function paginate(query, options, callback) {
     query   = query || {};
     options = Object.assign({}, paginate.options, options);
 
-    var select     = options.select;
-    var sort       = options.sort;
-    var populate   = options.populate;
-    var lean       = options.lean || false;
+    var select        = options.select;
+    var sort          = options.sort;
+    var populate      = options.populate;
+    var lean          = options.lean || false;
+    var normalizeId   = options.normalizeId || false;
+    var privateFields = options.privateFields || [];
 
     var page    = options.hasOwnProperty('page') ? Number(options.page) : 1;
     var size    = options.hasOwnProperty('size') ? Number(options.size) : 10;
     var maxSize = options.hasOwnProperty('maxSize') ? Number(options.maxSize) : 100;
 
     if(size > maxSize) {
-      size = maxSize;
+        size = maxSize;
     }
 
     var promises = {
         docs:  Promise.resolve([]),
         count: this.count(query).exec()
     };
+
+    if(privateFields.length && select) {
+        privateFields.forEach(function(field) {
+            if(select && select.indexOf(field) !== -1) {
+                select = select.replace(field, '');
+            }
+        });
+    }
+
+    if(privateFields.length && (!select || select.indexOf('-') !== -1)) {
+        var tempSelect = '';
+        privateFields.forEach(function(field) {
+            tempSelect += ' -' + field;
+        });
+        select = select ? (select + tempSelect) : tempSelect;
+    }
+
+    if(select && normalizeId && select.indexOf('id') !== -1) {
+        select = select.replace('id', '_id');
+    }
+
+    if(select && select.indexOf('-') === -1 && select.indexOf('_id') === -1) {
+      select += ' -_id';
+    }
 
     var query = this.find(query)
         .select(select)
@@ -52,12 +80,13 @@ function paginate(query, options, callback) {
 
     promises.docs = query.exec();
 
-    if (lean) {
+    if (lean && normalizeId) {
         promises.docs = promises.docs.then(function(docs) {
             docs.forEach(function(doc) {
-                doc.id = String(doc._id);
-                delete doc._id;
-                delete doc.__v;
+                if(normalizeId && doc._id) {
+                  doc.id = String(doc._id);
+                  delete doc._id;
+                }
             });
 
             return docs;
